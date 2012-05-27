@@ -1,61 +1,49 @@
 package cdh.editor;
 
 import cdh.editor.objects.CanvasObject;
+import cdh.editor.objects.GameObject;
 import cdh.editor.objects.Waypoint;
-import java.awt.PaintContext;
-import java.awt.Rectangle;
-import java.awt.geom.AffineTransform;
+import java.awt.event.KeyEvent;
 import java.awt.geom.Rectangle2D;
-import java.awt.image.ColorModel;
 import javax.swing.JPanel;
 import java.awt.Dimension;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Paint;
 import java.util.ArrayList;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseEvent;
 import java.awt.Point;
 import java.awt.RenderingHints;
+import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
-import javax.swing.JLabel;
 
-public class Canvas extends JPanel {
+public class Canvas extends JPanel implements KeyListener {
 
     private ArrayList<CanvasObject> waypoints = new ArrayList<CanvasObject>();
+    private ArrayList<CanvasObject> gameObjects = new ArrayList<CanvasObject>();
     private CanvasObject draggedObject = null;
     private JFileChooser fc;
-    BufferedImage myPicture;
+    private BufferedImage myPicture = null;
 
     public Canvas() {
         setPreferredSize(new Dimension(1200, 720));
         setBackground(Color.WHITE);
+        setFocusable(true);
+        fc = new JFileChooser();
+
         bindListeners();
-
-//        fc = new JFileChooser();
-//        int returnVal = fc.showOpenDialog(null);
-//        File file = new File("");
-//        if (returnVal == JFileChooser.APPROVE_OPTION) {
-//            file = fc.getSelectedFile();
-//        }
-
-        try {
-//            myPicture = ImageIO.read(file);
-            myPicture = ImageIO.read(new File("C:/level1map.png"));
-        } catch (IOException e) {
-        }
     }
 
     private void bindListeners() {
         MouseSupport mouseSupport = new MouseSupport();
+        this.addKeyListener(this);
         this.addMouseListener(mouseSupport);
         this.addMouseMotionListener(mouseSupport);
     }
@@ -66,25 +54,16 @@ public class Canvas extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        g.drawImage(myPicture, 0, 0, null);
-        Color color = new Color(1, 1, 1, 0.6f);
-        g2.setPaint(color);
-        g2.fill(new Rectangle2D.Double(0, 0, this.getWidth(), this.getHeight()));
-
-        for(int i = 1; i < 13; i++){
-           int xx = i * 90 + 15;
-           g2.drawLine(xx, 0, xx, 720);
-        }
-        for(int i = 1; i < 8; i++){
-           int yy = i * 90;
-           g2.drawLine(15, yy, 1185, yy);
-        }
-
+        paintImageWithMask(g);
         paintCanvasObjects(g);
         paintLineBetweenWaypointsWithAngle(g2);
     }
 
     private void paintCanvasObjects(Graphics g) {
+        for (CanvasObject object : gameObjects) {
+            object.paint(g);
+        }
+        
         for (CanvasObject object : waypoints) {
             object.paint(g);
         }
@@ -100,9 +79,30 @@ public class Canvas extends JPanel {
 
             Point middle = new Point((int) (co1.getCenterX() + co2.getCenterX()) / 2 - 10, (int) (co1.getCenterY() + co2.getCenterY()) / 2 - 10);
 
-            g2.setColor(new Color(150, 150, 150));
+            g2.setColor(new Color(70, 70, 70));
             g2.setFont(new Font("SansSerif", Font.PLAIN, 9));
             g2.drawString(Integer.toString(getAngle(co1, co2)) + fromUnicode("00B0"), (int) middle.getX() + 5, (int) middle.getY() + 5);
+        }
+    }
+
+    private void paintImageWithMask(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g;
+
+        if (myPicture != null) {
+            g.drawImage(myPicture, 0, 0, null);
+
+            Color color = new Color(1, 1, 1, 0.6f);
+            g2.setPaint(color);
+            g2.fill(new Rectangle2D.Double(0, 0, this.getWidth(), this.getHeight()));
+
+            g2.setColor(Color.WHITE);
+            for (int i = 1; i < 13; i++) {
+                int pos = i * 90;
+                g2.drawLine(pos + 15, 0, pos + 15, 720);
+
+                if (i <= 7)
+                    g2.drawLine(0, pos, 1200, pos);
+            }
         }
     }
 
@@ -130,6 +130,11 @@ public class Canvas extends JPanel {
             if (object.contains(point))
                 return object;
         }
+        
+        for (CanvasObject object : gameObjects) {
+            if (object.contains(point))
+                return object;
+        }
         return null;
     }
 
@@ -137,8 +142,40 @@ public class Canvas extends JPanel {
         waypoints.add(new Waypoint(point.getX(), point.getY()));
     }
 
+    public void createNewGameObject(Point point) {
+        gameObjects.add(new GameObject(point.getX(), point.getY()));
+    }
+
     char fromUnicode(String codePoint) {
         return (char) Integer.parseInt(codePoint, 16);
+    }
+
+    private void loadImageFromFile() {
+        if (fc.showOpenDialog(this.getParent()) == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+
+            try {
+                myPicture = ImageIO.read(file);
+//                myPicture = ImageIO.read(new File("C:/level1map.png"));
+            } catch (IOException e) {
+                System.out.print("Problem with loading image");
+            }
+            repaint();
+        }
+    }
+
+// key listener
+    public void keyTyped(KeyEvent e) {
+        if (e.getKeyChar() == 'o') {
+            loadImageFromFile();
+        }
+    }
+
+    public void keyPressed(KeyEvent e) {
+        System.out.println("tpes");
+    }
+
+    public void keyReleased(KeyEvent e) {
     }
 
 // private classes
@@ -147,11 +184,16 @@ public class Canvas extends JPanel {
         @Override
         public void mouseClicked(MouseEvent e) {
             if (e.getButton() == MouseEvent.BUTTON3) {
-                draggedObject = findObjectToDrag(e.getPoint());
-                if (draggedObject != null) {
-                    waypoints.remove(draggedObject);
+                if (e.isShiftDown()) {
+                    createNewGameObject(e.getPoint());
+                    
                 } else {
-                    createNewWaypoint(e.getPoint());
+                    draggedObject = findObjectToDrag(e.getPoint());
+                    if (draggedObject != null) {
+                        waypoints.remove(draggedObject);
+                    } else {
+                        createNewWaypoint(e.getPoint());
+                    }
                 }
                 repaint();
             }
