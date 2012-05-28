@@ -83,7 +83,7 @@ public class Canvas extends JPanel implements KeyListener {
                 CanvasObject co2 = waypoints.get(i - 1);
 
                 if (track.isSelected())
-                    g2.setColor(Color.CYAN);
+                    g2.setColor(Color.GREEN.darker());
                 else
                     g2.setColor(Color.CYAN.darker());
 
@@ -153,7 +153,7 @@ public class Canvas extends JPanel implements KeyListener {
         return null;
     }
 
-    private Track findSelectedTrack() {
+    public static Track findSelectedTrack() {
         for (Track track : tracks) {
             if (track.isSelected())
                 return track;

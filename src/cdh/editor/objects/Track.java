@@ -1,6 +1,5 @@
 package cdh.editor.objects;
 
-import cdh.editor.Main;
 import cdh.editor.SettingsPanel;
 import java.awt.Component;
 import java.util.ArrayList;
