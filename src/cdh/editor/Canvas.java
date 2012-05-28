@@ -2,6 +2,7 @@ package cdh.editor;
 
 import cdh.editor.objects.CanvasObject;
 import cdh.editor.objects.GameObject;
+import cdh.editor.objects.Track;
 import cdh.editor.objects.Waypoint;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Rectangle2D;
@@ -26,7 +27,7 @@ import javax.swing.JFileChooser;
 
 public class Canvas extends JPanel implements KeyListener {
 
-    private ArrayList<CanvasObject> waypoints = new ArrayList<CanvasObject>();
+    public static ArrayList<Track> tracks = new ArrayList<Track>();
     private ArrayList<CanvasObject> gameObjects = new ArrayList<CanvasObject>();
     private CanvasObject draggedObject = null;
     private JFileChooser fc;
@@ -39,6 +40,8 @@ public class Canvas extends JPanel implements KeyListener {
         fc = new JFileChooser();
 
         bindListeners();
+
+        tracks.add(new Track(true));
     }
 
     private void bindListeners() {
@@ -55,33 +58,43 @@ public class Canvas extends JPanel implements KeyListener {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         paintImageWithMask(g);
-        paintCanvasObjects(g);
         paintLineBetweenWaypointsWithAngle(g2);
+        paintCanvasObjects(g);
     }
 
     private void paintCanvasObjects(Graphics g) {
         for (CanvasObject object : gameObjects) {
             object.paint(g);
         }
-        
-        for (CanvasObject object : waypoints) {
-            object.paint(g);
+
+        for (Track track : tracks) {
+            for (CanvasObject object : track.getWaypoints()) {
+                object.paint(g);
+            }
         }
     }
 
     private void paintLineBetweenWaypointsWithAngle(Graphics g2) {
-        for (int i = 1; i < waypoints.size(); i++) {
-            CanvasObject co1 = waypoints.get(i);
-            CanvasObject co2 = waypoints.get(i - 1);
+        for (Track track : tracks) {
+            ArrayList<CanvasObject> waypoints = track.getWaypoints();
 
-            g2.setColor(Color.CYAN.darker());
-            g2.drawLine((int) co1.getCenterX(), (int) co1.getCenterY(), (int) co2.getCenterX(), (int) co2.getCenterY());
+            for (int i = 1; i < waypoints.size(); i++) {
+                CanvasObject co1 = waypoints.get(i);
+                CanvasObject co2 = waypoints.get(i - 1);
 
-            Point middle = new Point((int) (co1.getCenterX() + co2.getCenterX()) / 2 - 10, (int) (co1.getCenterY() + co2.getCenterY()) / 2 - 10);
+                if (track.isSelected())
+                    g2.setColor(Color.CYAN);
+                else
+                    g2.setColor(Color.CYAN.darker());
 
-            g2.setColor(new Color(70, 70, 70));
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 9));
-            g2.drawString(Integer.toString(getAngle(co1, co2)) + fromUnicode("00B0"), (int) middle.getX() + 5, (int) middle.getY() + 5);
+                g2.drawLine((int) co1.getCenterX(), (int) co1.getCenterY(), (int) co2.getCenterX(), (int) co2.getCenterY());
+
+                Point middle = new Point((int) (co1.getCenterX() + co2.getCenterX()) / 2 - 10, (int) (co1.getCenterY() + co2.getCenterY()) / 2 - 10);
+
+                g2.setColor(new Color(70, 70, 70));
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 9));
+                g2.drawString(Integer.toString(getAngle(co1, co2)) + fromUnicode("00B0"), (int) middle.getX() + 5, (int) middle.getY() + 5);
+            }
         }
     }
 
@@ -126,11 +139,13 @@ public class Canvas extends JPanel implements KeyListener {
     }
 
     public CanvasObject findObjectToDrag(Point point) {
-        for (CanvasObject object : waypoints) {
-            if (object.contains(point))
-                return object;
+        for (Track track : tracks) {
+            for (CanvasObject object : track.getWaypoints()) {
+                if (object.contains(point))
+                    return object;
+            }
         }
-        
+
         for (CanvasObject object : gameObjects) {
             if (object.contains(point))
                 return object;
@@ -138,8 +153,16 @@ public class Canvas extends JPanel implements KeyListener {
         return null;
     }
 
+    private Track findSelectedTrack() {
+        for (Track track : tracks) {
+            if (track.isSelected())
+                return track;
+        }
+        return null;
+    }
+
     public void createNewWaypoint(Point point) {
-        waypoints.add(new Waypoint(point.getX(), point.getY()));
+        findSelectedTrack().getWaypoints().add(new Waypoint(point.getX(), point.getY()));
     }
 
     public void createNewGameObject(Point point) {
@@ -186,11 +209,11 @@ public class Canvas extends JPanel implements KeyListener {
             if (e.getButton() == MouseEvent.BUTTON3) {
                 if (e.isShiftDown()) {
                     createNewGameObject(e.getPoint());
-                    
+
                 } else {
                     draggedObject = findObjectToDrag(e.getPoint());
                     if (draggedObject != null) {
-                        waypoints.remove(draggedObject);
+                        findSelectedTrack().getWaypoints().remove(draggedObject);
                     } else {
                         createNewWaypoint(e.getPoint());
                     }

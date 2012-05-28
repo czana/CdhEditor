@@ -1,23 +1,26 @@
 package cdh.editor;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 public class Main {
 
+    public static JFrame frame;
+            
     public void createGUI() {
-        JFrame frame = new JFrame("Clay Defenser Editor by LAZYSOFT");
+        frame = new JFrame("Clay Defenser Editor by LAZYSOFT");
+        SettingsPanel sp = new SettingsPanel();
+
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.add(initCanvas());
+        frame.add(new Canvas(), BorderLayout.CENTER);
+        frame.add(sp, BorderLayout.EAST );
+        frame.setMinimumSize(new Dimension(1350, 720));
         frame.pack();
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
-    }
-
-    private Canvas initCanvas() {
-        Canvas canvas = new Canvas();
-        return canvas;
     }
 
     public static void main(String[] args) {
